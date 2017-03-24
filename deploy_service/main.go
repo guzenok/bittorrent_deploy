@@ -112,7 +112,7 @@ func GoTorrents() {
 			}
 			// Поставить на закачку опубликованные файлы, которых нет локально
 			peers := cc.GetPeers()
-			if peers != nil && len(peers) > 0 {
+			if len(peers) > 0 {
 				for fn, hash := range filesAll {
 					if _, exist := filesLocal[fn]; !exist {
 						log.Printf("StartDownloadFile %s from %v", fn, peers)
@@ -137,8 +137,8 @@ func GoHealthChecks(l net.Listener) {
 		if tc != nil {
 			tc.torrentClient.WriteStatus(c)
 		} else {
-			c.Write([]byte("nil"))
+			c.Write([]byte("nil")) // nolint: errcheck
 		}
-		c.Close()
+		c.Close() // nolint: errcheck
 	}
 }
