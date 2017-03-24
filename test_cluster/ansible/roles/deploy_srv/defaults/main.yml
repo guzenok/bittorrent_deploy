@@ -1,0 +1,7 @@
+---
+
+deploy:
+  directories:
+    log_dir: "/var/log"
+    data_dir: "/var/deploy"
+    cache_dir: "/var/deploy/cache"

@@ -1,0 +1,17 @@
+FROM ubuntu:16.04
+
+RUN apt-get update \
+    && apt-get install -y openssh-server \
+    && apt-get install -y python-pip \
+    && mkdir /var/run/sshd \
+    && mkdir -p /root/.ssh \
+    && chmod 700 /root/.ssh \
+    && ssh-keygen -A
+
+COPY ansible.key.pub /root/.ssh/authorized_keys
+
+RUN chmod 600 /root/.ssh/authorized_keys
+
+ENTRYPOINT [ "/usr/sbin/sshd", "-D" ]
+
+EXPOSE 22

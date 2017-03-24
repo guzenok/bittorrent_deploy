@@ -1,0 +1,15 @@
+FROM ansible_managed_host
+
+RUN apt-get install -y software-properties-common \
+    && apt-add-repository ppa:ansible/ansible \
+    && apt-get update \
+    && apt-get install -y ansible
+
+COPY ansible.key /root/.ssh/id_rsa
+COPY ansible.key.pub /root/.ssh/id_rsa.pub
+
+RUN chmod 600 /root/.ssh/id_rsa*
+
+ENTRYPOINT [ "/usr/sbin/sshd", "-D" ]
+
+EXPOSE 22

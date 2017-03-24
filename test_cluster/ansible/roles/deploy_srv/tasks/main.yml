@@ -1,0 +1,16 @@
+---
+
+- name: Create required directories
+  file:
+    mode: 0755
+    path: "{{ item.value }}"
+    state: directory
+  with_dict: "{{ deploy.directories }}"
+
+
+- name: Install start-script
+  template:
+    dest: /bin/deploy_srv.run
+    mode: 0755
+    src: deploy_srv.run.j2
+

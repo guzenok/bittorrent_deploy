@@ -1,0 +1,8 @@
+[cluster_ui]
+ansible_control_00
+
+[cluster_worker]
+ansible_managed_01
+ansible_managed_02
+ansible_managed_03
+ansible_managed_04

@@ -1,0 +1,19 @@
+---
+
+- name: Assemble Consul control
+  hosts:
+    - cluster_ui
+    - cluster_worker
+  any_errors_fatal: true
+  become: no
+  become_user: root
+  tasks:
+    - name: start consul
+      command: /bin/consul.run start
+      when: flag == "consul" or flag == "start"
+    - name: start deploy_srv
+      command: /bin/deploy_srv.run start
+      when: flag == "deploy" or flag == "start"
+    - name: restart deploy_srv
+      command: /bin/deploy_srv.run restart
+      when: flag == "restart"

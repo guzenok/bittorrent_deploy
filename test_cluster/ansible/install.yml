@@ -1,0 +1,26 @@
+---
+
+- name: Assemble control host
+  hosts:
+    - cluster_ui
+  any_errors_fatal: true
+  become: no
+  become_user: root
+  roles:
+    - role: deploy_srv
+    - role: consul
+      startopts: "-client=0.0.0.0 -ui"
+      settings:
+        bootstrap_expect: true
+
+- name: Assemble Consul managed host
+  hosts:
+    - cluster_worker
+  any_errors_fatal: true
+  become: no
+  become_user: root
+  roles:
+    - role: deploy_srv
+    - role: consul
+      settings:
+        retry_join: [ "ansible_control_00" ]

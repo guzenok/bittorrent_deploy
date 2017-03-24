@@ -1,0 +1,13 @@
+---
+
+- name: start consul
+  command: /bin/consul.run start
+
+- name: stop consul
+  command: /bin/consul.run stop
+
+- name: reload consul
+  command: /bin/consul.run reload
+
+- name: restart consul
+  command: /bin/consul.run restart

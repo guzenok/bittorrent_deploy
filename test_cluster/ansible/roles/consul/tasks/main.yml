@@ -1,0 +1,52 @@
+---
+
+- name: Install required packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - unzip
+
+- name: Create Consul required directories
+  file:
+    mode: 0755
+    path: "{{ item.value }}"
+    state: directory
+  with_dict: "{{ directories }}"
+
+- name: Download Consul
+  get_url:
+    url: "https://releases.hashicorp.com/consul/{{ consul_version }}/consul_{{ consul_version }}_linux_amd64.zip"
+    dest: "/var/tmp/consul_{{ consul_version }}_linux_amd64.zip"
+    sha256sum: "{{ consul_checksum }}"
+
+- name: Extract Consul
+  unarchive:
+    copy: no
+    creates: "{{ directories.install_dir }}/consul"
+    dest: "{{ directories.install_dir }}"
+    src: "/var/tmp/consul_{{ consul_version }}_linux_amd64.zip"
+
+- name: Link to Consul binary
+  file:
+    dest: /usr/bin/consul
+    mode: 731
+    src: "{{ directories.install_dir }}/consul"
+    state: link
+
+- name: Install Consul start-script
+  template:
+    dest: /bin/consul.run
+    mode: 0755
+    src: consul.run.j2
+
+- name: Configure Consul service defaults
+  template:
+    dest: /etc/default/consul
+    src: defaults.j2
+
+- name: Create Consul config
+  template:
+    dest: "{{ directories.config_dir }}/config.json"
+    src: config.json.j2
+

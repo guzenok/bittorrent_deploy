@@ -1,0 +1,21 @@
+---
+
+consul_version: "0.7.5"
+consul_checksum: "40ce7175535551882ecdff21fdd276cef6eaab96be8a8260e0599fadb6f1f5b8"
+startopts: ""
+settings:
+  bootstrap_expect: false
+  retry_join: []
+  datacenter: "dc1"
+  node_name: "{{inventory_hostname}}"
+  server: true
+  rejoin_after_leave: true
+  log_level: "warn"
+  ports: {}
+  leave_on_terminate: yes
+  enable_debug: no
+directories:
+  config_dir: "/etc/consul.d"
+  data_dir: "/var/lib/consul"
+  install_dir: "/usr/share/consul"
+  log_dir: "/var/log"

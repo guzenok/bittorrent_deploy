@@ -1,0 +1,41 @@
+#!/bin/bash
+
+PID_FILE=/var/lock/consul.pid
+
+if [ -f "/etc/default/consul" ]; then
+    . /etc/default/consul
+fi
+
+start() {
+  nohup /usr/bin/consul agent \
+    -bind 0.0.0.0 \
+    -config-dir="{{ directories.config_dir }}" \
+    ${CONSUL_STARTOPS} \
+    -pid-file $PID_FILE \
+    >> {{ directories.log_dir }}/consul.log 2>&1 &
+}
+
+# Make sure to use all our CPUs, because Consul can block a scheduler thread
+export GOMAXPROCS=`nproc`
+
+case "$1" in
+    "start")
+        start
+        ;;
+    "stop")
+        test -e $PID_FILE && kill `cat $PID_FILE` 2>/dev/null
+        ;;
+    "restart")
+        test -e $PID_FILE && kill `cat $PID_FILE` 2>/dev/null
+        start
+        ;;
+    "reload")
+        test -e $PID_FILE && kill -1 `cat $PID_FILE` 2>/dev/null || start
+        ;;
+    *)
+        echo “Usage: $0 start|stop|restart|reload”
+        exit 1
+        ;;
+esac
+
+

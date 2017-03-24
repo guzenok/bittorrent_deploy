@@ -1,0 +1,17 @@
+{
+  {% if settings.server and settings.bootstrap_expect %}
+  "bootstrap_expect": 1,
+  {% endif %}
+  {% if settings.retry_join|length > 0 %}
+  "retry_join": {{ settings.retry_join | to_json }},
+  {% endif %}
+  "datacenter": "{{ settings.datacenter }}",
+  "data_dir": "{{ directories.data_dir }}",
+  "enable_debug": {{ settings.enable_debug | to_json }},
+  "leave_on_terminate": {{ settings.leave_on_terminate | to_json }},
+  "log_level": "{{ settings.log_level }}",
+  "node_name": "{{ settings.node_name }}",
+  "ports": {{ settings.ports | to_json }},
+  "rejoin_after_leave": {{ settings.rejoin_after_leave | to_json }},
+  "server": {{ settings.server | to_json }}
+}

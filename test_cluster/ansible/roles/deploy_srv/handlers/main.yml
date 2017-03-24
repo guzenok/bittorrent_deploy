@@ -1,0 +1,8 @@
+---
+
+- name: start deploy_srv
+  command: /bin/deploy_srv.run restart
+
+- name: stop deploy_srv
+  command: /bin/deploy_srv.run stop
+
