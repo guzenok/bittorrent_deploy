@@ -69,7 +69,7 @@ func main() {
 	/*
 		i := 3 // Ждем 3 секунды
 		for tc != nil && !tc.torrentClient.WaitAll() && i > 0 {
-			time.Sleep(1e9)
+			time.Sleep(time.Second * 1)
 			i--
 		}
 	*/
@@ -80,7 +80,7 @@ func GoTorrents() {
 	// бесконечная работа
 	for goTorrentsAgain {
 		// ограничение
-		time.Sleep(2e9)
+		time.Sleep(time.Second * 2)
 		// Нужно ли подключиться к torrent?
 		if tc == nil {
 			// torrent-клиент
