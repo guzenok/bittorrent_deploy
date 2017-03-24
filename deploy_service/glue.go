@@ -18,9 +18,9 @@ func NewPeerInfo(addr string, servID string) PeerInfo {
 	}
 }
 
-func (this *PeerInfo) GetId() (id [20]byte) {
+func (pi *PeerInfo) GetId() (id [20]byte) {
 	prefixLen := (len(SERVICE_NAME) + len(SERVICE_NAME_DELIM))
-	txt := this.serviceID[prefixLen:]
+	txt := pi.serviceID[prefixLen:]
 	bytes, _ := hex.DecodeString(txt)
 	copy(id[:], bytes)
 	return id

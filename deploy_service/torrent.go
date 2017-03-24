@@ -44,13 +44,13 @@ func NewTorrentClient() *TorrentClient {
 	return tc
 }
 
-func (this *TorrentClient) StartDownloadFile(hash []byte, peers []PeerInfo) {
+func (tc *TorrentClient) StartDownloadFile(hash []byte, peers []PeerInfo) {
 	if len(peers) < 1 {
 		return
 	}
 	var Hash metainfo.Hash
 	copy(Hash[:], hash[0:20])
-	t, created := this.torrentClient.AddTorrentInfoHash(Hash)
+	t, created := tc.torrentClient.AddTorrentInfoHash(Hash)
 	if created {
 		log.Printf("New torrent: %v", t)
 	} else {
@@ -71,7 +71,7 @@ func (this *TorrentClient) StartDownloadFile(hash []byte, peers []PeerInfo) {
 	t.DownloadAll()
 }
 
-func (this *TorrentClient) GetFileList(self PeerInfo) map[string][]byte {
+func (tc *TorrentClient) GetFileList(self PeerInfo) map[string][]byte {
 	files, err := ioutil.ReadDir(*DIR_STORE)
 	if err != nil {
 		log.Printf("Read local dir: %s", err.Error())
@@ -89,7 +89,7 @@ func (this *TorrentClient) GetFileList(self PeerInfo) map[string][]byte {
 				log.Printf("Create metainfo OK: %v", mi)
 			}
 			list[f.Name()] = mi.HashInfoBytes().Bytes()
-			t, err := this.torrentClient.AddTorrent(mi)
+			t, err := tc.torrentClient.AddTorrent(mi)
 			if err != nil {
 				log.Printf("Add torrent err: %s", err.Error())
 				continue
