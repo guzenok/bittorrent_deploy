@@ -17,13 +17,12 @@ const (
 
 var (
 	DIR_STORE = flag.String("data", "./storage", "name of data dir")
-	DIR_CACHE = flag.String("cache", "./storage/cache", "name of cache dir")
+	//	DIR_CACHE = flag.String("cache", "./storage/cache", "name of cache dir")
 
 	tc              *TorrentClient
 	cc              *ConsulClient
 	goTorrentsAgain = true
 	ServiceID       string
-	thisPeer        PeerInfo
 )
 
 func main() {
@@ -88,6 +87,7 @@ func GoTorrents() {
 			if tc == nil {
 				continue
 			}
+			defer tc.Close()
 			ServiceID = IdToString(tc.torrentClient.PeerID())
 			log.Printf("PeerID: %s\n", ServiceID)
 		}
@@ -95,11 +95,9 @@ func GoTorrents() {
 		if tc != nil && cc == nil {
 			// consul-клиент
 			cc = NewConsulClient(ServiceID)
-			// Параметры этого торрент-клиента
-			thisPeer = NewPeerInfo("127.0.0.1", cc.service.ID)
 		}
 		// Получам списки файлов
-		filesLocal := tc.GetFileList(thisPeer)
+		filesLocal := tc.GetFileList()
 		filesAll := cc.GetFileList()
 
 		if filesLocal != nil && filesAll != nil {
@@ -110,14 +108,14 @@ func GoTorrents() {
 					log.Printf("AddFileToList: %s", fn)
 				}
 			}
-			// Поставить на закачку опубликованные файлы, которых нет локально
+			// закинуть адреса пиров
 			peers := cc.GetPeers()
-			if len(peers) > 0 {
-				for fn, hash := range filesAll {
-					if _, exist := filesLocal[fn]; !exist {
-						log.Printf("StartDownloadFile %s from %v", fn, peers)
-						tc.StartDownloadFile(hash, peers)
-					}
+			tc.SetPeers(peers)
+			// Поставить на закачку опубликованные файлы, которых нет локально
+			for fn, hash := range filesAll {
+				if _, exist := filesLocal[fn]; !exist {
+					log.Printf("StartDownloadFile %s", fn)
+					tc.StartDownloadFile(hash)
 				}
 			}
 		}

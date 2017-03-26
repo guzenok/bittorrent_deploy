@@ -170,13 +170,13 @@ func (cc *ConsulClient) registerService() bool {
 		Node:    cc.NodeName,
 		Address: cc.AdvertiseAddr,
 		Service: cc.service,
-		Check: &api.AgentCheck{
+		/* Check: &api.AgentCheck{
 			Node:      cc.NodeName,
 			CheckID:   "main",
 			Name:      "Deploy health check",
 			Notes:     "torrent client status",
 			ServiceID: cc.service.ID,
-		},
+		}, */
 	}
 	// Service
 	_, err := cc.client.Catalog().Register(reg, nil)

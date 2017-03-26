@@ -3,7 +3,7 @@ build: test_cluster/ansible.key compile
 	docker build -t ansible_managed_host -f ./test_cluster/Dockerfile.managed ./test_cluster
 	docker build -t ansible_control_host -f ./test_cluster/Dockerfile.control ./test_cluster
 
-compile: lint
+compile:
 	cd test_cluster/bin && CGO_ENABLED=0 go build -a -ldflags '-s' -installsuffix cgo ../../deploy_service/ && cd ../..
 
 lint:
