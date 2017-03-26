@@ -58,13 +58,12 @@ func main() {
 	}
 	// Остановка обработки торрентов
 	goTorrentsAgain = false
-	/*
-		i := 3 // Ждем 3 секунды
-		for tc != nil && !tc.torrentClient.WaitAll() && i > 0 {
-			time.Sleep(time.Second * 1)
-			i--
-		}
-	*/
+
+	/*i := 3 // Ждем 3 секунды
+	for tc != nil && !tc.torrentClient.WaitAll() && i > 0 {
+		time.Sleep(time.Second * 1)
+		i--
+	}*/
 }
 
 // Health-check goroutine

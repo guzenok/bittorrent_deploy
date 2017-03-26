@@ -58,12 +58,10 @@ func GoTorrents() {
 				fileName := f.Name()
 				// если еще не обработан, то
 				if _, processed := processedFiles[fileName]; !processed {
-					// начинаем раздачу
+					// начинаем раздачу и анонсируем ее в consul
 					t, annonce := tc.Share(fileName)
-					if t != nil {
+					if t != nil && cc.AddAnnoncedFile(fileName, annonce) {
 						processedFiles[fileName] = t
-						// и анонсируем ее в consul
-						cc.AddAnnoncedFile(fileName, annonce)
 					}
 				}
 			}
