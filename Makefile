@@ -12,19 +12,23 @@ lint:
 test_cluster/ansible.key:
 	ssh-keygen -q -f test_cluster/ansible.key -t rsa -b4096 -C "ansible@*" -N ""
 
-start: compile
+up: compile
 	cd ./test_cluster && docker-compose -p host up -d && cd ..
 	docker exec -ti host_ansible_control_00_1 bash -c "/root/ansible/install.sh"
 	docker exec -ti host_ansible_control_00_1 bash -c "/root/ansible/start.sh"
 
-restart: compile
-	docker exec -ti host_ansible_control_00_1 bash -c "/root/ansible/start.sh restart"
+down:
+	cd ./test_cluster && docker-compose -p host down && cd ..
+
+start:
+	cd ./test_cluster && docker-compose -p host up -d && cd ..
+	docker exec -ti host_ansible_control_00_1 bash -c "/root/ansible/start.sh"
 
 stop:
 	cd ./test_cluster && docker-compose -p host stop && cd ..
 
-down:
-	cd ./test_cluster && docker-compose -p host down && cd ..
+restart: compile
+	docker exec -ti host_ansible_control_00_1 bash -c "/root/ansible/start.sh restart"
 
 clean: down
 	find . -type f -name ".gitignore" | while read CONF ;\

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"time"
 
 	"github.com/rcrowley/goagain"
 )
@@ -17,12 +16,6 @@ const (
 
 var (
 	DIR_STORE = flag.String("data", "./storage", "name of data dir")
-	//	DIR_CACHE = flag.String("cache", "./storage/cache", "name of cache dir")
-
-	tc              *TorrentClient
-	cc              *ConsulClient
-	goTorrentsAgain = true
-	ServiceID       string
 )
 
 func main() {
@@ -72,54 +65,6 @@ func main() {
 			i--
 		}
 	*/
-}
-
-// Torrents goroutine
-func GoTorrents() {
-	// бесконечная работа
-	for goTorrentsAgain {
-		// ограничение
-		time.Sleep(time.Second * 2)
-		// Нужно ли подключиться к torrent?
-		if tc == nil {
-			// torrent-клиент
-			tc = NewTorrentClient()
-			if tc == nil {
-				continue
-			}
-			defer tc.Close()
-			ServiceID = IdToString(tc.torrentClient.PeerID())
-			log.Printf("PeerID: %s\n", ServiceID)
-		}
-		// Можно начинать работу с consul ?
-		if tc != nil && cc == nil {
-			// consul-клиент
-			cc = NewConsulClient(ServiceID)
-		}
-		// Получам списки файлов
-		filesLocal := tc.GetFileList()
-		filesAll := cc.GetFileList()
-
-		if filesLocal != nil && filesAll != nil {
-			// Опубликовать те локальные файлы, которых еще нет в списке
-			for fn, hash := range filesLocal {
-				if _, exist := filesAll[fn]; !exist {
-					cc.AddFileToList(fn, hash)
-					log.Printf("AddFileToList: %s", fn)
-				}
-			}
-			// закинуть адреса пиров
-			peers := cc.GetPeers()
-			tc.SetPeers(peers)
-			// Поставить на закачку опубликованные файлы, которых нет локально
-			for fn, hash := range filesAll {
-				if _, exist := filesLocal[fn]; !exist {
-					log.Printf("StartDownloadFile %s", fn)
-					tc.StartDownloadFile(hash)
-				}
-			}
-		}
-	}
 }
 
 // Health-check goroutine

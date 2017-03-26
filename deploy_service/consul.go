@@ -3,6 +3,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"strconv"
 
 	"github.com/hashicorp/consul/api"
@@ -68,8 +69,6 @@ func (cc *ConsulClient) hasAgent() bool {
 	}
 	cc.NodeName = info["Config"]["NodeName"].(string)
 	cc.AdvertiseAddr = info["Config"]["AdvertiseAddr"].(string)
-	cc.registerService()
-	// cc.registerHealthCheck()
 	return true
 }
 
@@ -103,7 +102,7 @@ func (cc *ConsulClient) needReconnect() {
 	cc.client = nil
 }
 
-func (cc *ConsulClient) GetFileList() map[string][]byte {
+func (cc *ConsulClient) GetAnnoncedFiles() map[string][]byte {
 	if !cc.hasKV() {
 		return nil
 	}
@@ -121,13 +120,13 @@ func (cc *ConsulClient) GetFileList() map[string][]byte {
 	return list
 }
 
-func (cc *ConsulClient) AddFileToList(key string, val []byte) bool {
+func (cc *ConsulClient) AddAnnoncedFile(key string, val *[]byte) bool {
 	if !cc.hasKV() {
 		return false
 	}
 	pair := &api.KVPair{
 		Key:   LIST_PREFIX + key,
-		Value: val,
+		Value: *val,
 	}
 	_, _, err := cc.client.KV().CAS(pair, cc.wOpt)
 	if err != nil {
@@ -138,7 +137,7 @@ func (cc *ConsulClient) AddFileToList(key string, val []byte) bool {
 	return true
 }
 
-func (cc *ConsulClient) GetPeers() []PeerInfo {
+func (cc *ConsulClient) GetPeers() []net.IP {
 	if !cc.hasCatalog() {
 		return nil
 	}
@@ -148,21 +147,25 @@ func (cc *ConsulClient) GetPeers() []PeerInfo {
 		log.Printf("Get Services from consul err: %s!", err.Error())
 		return nil
 	}
-	list := make([]PeerInfo, len(services))
+	list := make([]net.IP, len(services))
 	i := 0
 	registered := false
 	for _, serv := range services {
 		if serv.Address != cc.AdvertiseAddr {
-			list[i] = NewPeerInfo(serv.Address, serv.ServiceID)
+			list[i] = net.ParseIP(serv.Address)
 			i++
 		} else {
 			registered = true
 		}
 	}
 	if !registered {
-		cc.needReconnect()
+		cc.Register()
 	}
 	return list[:i]
+}
+
+func (cc *ConsulClient) Register() bool {
+	return cc.registerService() // && cc.registerHealthCheck()
 }
 
 func (cc *ConsulClient) registerService() bool {
@@ -185,7 +188,7 @@ func (cc *ConsulClient) registerService() bool {
 		log.Printf("Register service err: %s!", err.Error())
 		return false
 	} else {
-		log.Printf("Register service OK: %v, %v", *reg, reg.Service)
+		log.Printf("Register service OK: %#v", *reg)
 	}
 	return true
 }

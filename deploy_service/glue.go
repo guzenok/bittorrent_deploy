@@ -3,29 +3,92 @@ package main
 
 import (
 	"encoding/hex"
-	"net"
+	"io/ioutil"
+	"log"
+	"time"
+
+	"github.com/anacrolix/torrent"
 )
 
-type PeerInfo struct {
-	IP        net.IP
-	serviceID string
-}
+var (
+	tc              *TorrentClient
+	cc              *ConsulClient
+	ServiceID       string
+	goTorrentsAgain = true
+)
 
-func NewPeerInfo(addr string, servID string) PeerInfo {
-	return PeerInfo{
-		IP:        net.ParseIP(addr),
-		serviceID: servID,
+func GoTorrents() {
+	// Список файлов в работе
+	var processedFiles = make(map[string]*torrent.Torrent)
+	// begin Рабочий цикл
+	for goTorrentsAgain {
+
+		// освобождение cpu
+		time.Sleep(time.Second * 2)
+
+		// Нужно ли подключиться к torrent?
+		if tc == nil {
+			// torrent-клиент
+			tc = NewTorrentClient()
+			if tc == nil {
+				continue
+			}
+			defer tc.Close()
+			ServiceID = hex.EncodeToString([]byte(tc.torrentClient.PeerID()))
+			log.Printf("PeerID: %s\n", ServiceID)
+		}
+
+		// Можно начинать работу с consul ?
+		if tc != nil && cc == nil {
+			// consul-клиент
+			cc = NewConsulClient(ServiceID)
+		}
+
+		// Обрабатываем имеющиеся локально файлы
+		files, err := ioutil.ReadDir(*DIR_STORE)
+		if err != nil {
+			log.Printf("Read local dir \"%s\" err: %s", *DIR_STORE, err.Error())
+			continue
+		} else {
+			for _, f := range files {
+				// не берем в работу директории, пустые и скрытые файлы
+				if f.IsDir() || f.Size() < 1 || f.Name()[0] == "."[0] {
+					continue
+				}
+				fileName := f.Name()
+				// если еще не обработан, то
+				if _, processed := processedFiles[fileName]; !processed {
+					// начинаем раздачу
+					t, annonce := tc.Share(fileName)
+					if t != nil {
+						processedFiles[fileName] = t
+						// и анонсируем ее в consul
+						cc.AddAnnoncedFile(fileName, annonce)
+					}
+				}
+			}
+		}
+
+		// Получаем адреса других пиров
+		peers := cc.GetPeers()
+		tc.SetPeers(peers)
+
+		// Читаем все анонсы из консула
+		annoncedFiles := cc.GetAnnoncedFiles()
+		if annoncedFiles == nil {
+			continue
+		}
+		for fileName, annonce := range annoncedFiles {
+			// если еще не обработан, то
+			if _, processed := processedFiles[fileName]; !processed {
+				// ставим на закачку
+				t := tc.StartDownloadFile(fileName, annonce)
+				if t != nil {
+					processedFiles[fileName] = t
+				}
+			}
+		}
+
 	}
-}
-
-func (pi *PeerInfo) GetId() (id [20]byte) {
-	prefixLen := (len(SERVICE_NAME) + len(SERVICE_NAME_DELIM))
-	txt := pi.serviceID[prefixLen:]
-	bytes, _ := hex.DecodeString(txt)
-	copy(id[:], bytes)
-	return id
-}
-
-func IdToString(str string) string {
-	return hex.EncodeToString([]byte(str))
+	// end Рабочий цикл
 }

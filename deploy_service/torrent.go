@@ -2,8 +2,8 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
+	"net"
 	"path"
 	"strconv"
 
@@ -53,70 +53,66 @@ func (tc *TorrentClient) Close() {
 	}
 }
 
-func (tc *TorrentClient) SetPeers(peers []PeerInfo) {
+func (tc *TorrentClient) SetPeers(peers []net.IP) {
 	pp := make([]torrent.Peer, len(peers))
-	for i, peerinfo := range peers {
+	for i, ip := range peers {
 		pp[i] = torrent.Peer{
-			IP:   peerinfo.IP,
+			IP:   ip,
 			Port: TORRENT_PORT,
 		}
 	}
 	tc.Peers = pp
 }
 
-func (tc *TorrentClient) StartDownloadFile(fileinfo []byte) {
-	var mi *metainfo.MetaInfo
-	err := bencode.Unmarshal(fileinfo, mi)
+func (tc *TorrentClient) StartDownloadFile(fileName string, annonce []byte) (t *torrent.Torrent) {
+	var mi metainfo.MetaInfo
+	err := bencode.Unmarshal(annonce, &mi)
 	if err != nil {
-		log.Printf("Decode metainfo err: %s", err.Error())
+		log.Printf("Deserialize metainfo for \"%s\" err: %s", fileName, err.Error())
 		return
 	}
-	t, created, _ := tc.torrentClient.AddTorrentSpec(
-		torrent.TorrentSpecFromMetaInfo(mi))
-	if created {
-		log.Printf("Add new torrent: %v", t)
-	} else {
-		log.Printf("Add existing torrent: %v", t)
-		return
-	}
+	t = setTorrent(&mi, "leeching", fileName)
 	// Ставим на закачку
-	t.AddPeers(tc.Peers)
-	t.DownloadAll()
+	if t != nil {
+		t.AddPeers(tc.Peers)
+		<-t.GotInfo()
+		t.DownloadAll()
+	}
+	return
 }
 
-func (tc *TorrentClient) GetFileList() map[string][]byte {
-	files, err := ioutil.ReadDir(*DIR_STORE)
+func (tc *TorrentClient) Share(fileName string) (t *torrent.Torrent, annonce *[]byte) {
+	log.Printf("Try share file \"%s\"", fileName)
+	mi, err := createMetainfo(fileName)
 	if err != nil {
-		log.Printf("Read local dir: %s", err.Error())
+		log.Printf("Create metainfo for \"%s\" err: %s", fileName, err.Error())
+		return
+	}
+	t = setTorrent(mi, "seeding", fileName)
+	// готовим возвращаемые значения
+	bytes, err := bencode.Marshal(mi)
+	if err != nil {
+		log.Printf("Serialize metainfo for \"%s\" err: %s", fileName, err.Error())
+	}
+	annonce = &bytes
+	return
+}
+
+func setTorrent(mi *metainfo.MetaInfo, act string, fileName string) *torrent.Torrent {
+	newT, isNew, err := tc.torrentClient.AddTorrentSpec(torrent.TorrentSpecFromMetaInfo(mi))
+	if err != nil {
+		log.Printf("Add torrent for \"%s\" err: %s", fileName, err.Error())
 		return nil
 	}
-	list := make(map[string][]byte, len(files))
-	for _, f := range files {
-		if !f.IsDir() && f.Size() > 0 && f.Name()[0] != "."[0] {
-			fileName := f.Name()
-			log.Printf("Begin try seeding: %s", fileName)
-			mi, err := CreateMetainfo(fileName)
-			if err != nil {
-				log.Printf("Create metainfo err: %s", err.Error())
-				continue
-			}
-			_, isNew, err := tc.torrentClient.AddTorrentSpec(
-				torrent.TorrentSpecFromMetaInfo(mi))
-			if err != nil {
-				log.Printf("Add torrent spec err: %s", err.Error())
-				continue
-			} else {
-				log.Print("Add torrent spec OK")
-			}
-			if isNew {
-				list[f.Name()], _ = bencode.Marshal(mi)
-			}
-		}
+	if isNew {
+		log.Printf("Begin %s \"%s\"", act, fileName)
+	} else {
+		log.Printf("Already %s \"%s\"", act, fileName)
 	}
-	return list
+	return newT
 }
 
-func CreateMetainfo(fileName string) (mi *metainfo.MetaInfo, err error) {
+func createMetainfo(fileName string) (mi *metainfo.MetaInfo, err error) {
 	mi = nil
 	// параметры файла
 	filePath := path.Join(*DIR_STORE, fileName)
