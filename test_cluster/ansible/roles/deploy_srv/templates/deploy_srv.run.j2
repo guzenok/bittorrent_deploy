@@ -6,7 +6,6 @@ LOG_FILE={{deploy.directories.log_dir}}/deploy_service.log
 start() {
   nohup /usr/local/bin/deploy_service \
     -data={{deploy.directories.data_dir}} \
-    -cache={{deploy.directories.cache_dir}} \
     >> $LOG_FILE 2>&1 &
 }
 

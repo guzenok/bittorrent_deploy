@@ -1,0 +1,4 @@
+[cluster_ui]
+ansible_control_000
+
+[cluster_worker]
