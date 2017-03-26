@@ -23,4 +23,4 @@
     - role: deploy_srv
     - role: consul
       settings:
-        retry_join: [ "ansible_control_00" ]
+        retry_join: [ "ansible_control_000" ]

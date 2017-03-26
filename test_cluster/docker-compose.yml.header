@@ -1,0 +1,19 @@
+version: '2'
+
+networks:
+    code-network:
+        driver: bridge
+
+services:
+
+    ansible_control_000:
+        image: ansible_control_host
+        volumes:
+            - ./ansible:/root/ansible
+            - ./bin:/usr/local/bin:ro
+            - ./storage/host_000:/var/deploy
+        ports:
+            - "8500:8500"
+        networks:
+            - code-network
+
