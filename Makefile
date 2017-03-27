@@ -1,6 +1,6 @@
-CONTAINERS_COUNT=010
+CONTAINERS_COUNT=004
 
-build: test_cluster/ansible.key compile composer_conf
+build: configure test_cluster/ansible.key compile
 	sudo chown -R $$USER ./test_cluster/storage/*
 	docker build -t ansible_managed_host -f ./test_cluster/Dockerfile.managed ./test_cluster
 	docker build -t ansible_control_host -f ./test_cluster/Dockerfile.control ./test_cluster
@@ -18,7 +18,7 @@ test_cluster/ansible.key:
 	ssh-keygen -q -f test_cluster/ansible.key -t rsa -b4096 -C "ansible@*" -N ""
 
 
-composer_conf:
+configure:
 	cp test_cluster/ansible/inventory.txt.header		   test_cluster/ansible/inventory.txt;\
 	cp test_cluster/docker-compose.yml.header		   test_cluster/docker-compose.yml;\
 	for i in `seq -w 001 ${CONTAINERS_COUNT}` ;\
