@@ -3,10 +3,10 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/rcrowley/goagain"
 )
 
@@ -19,68 +19,44 @@ var (
 )
 
 func main() {
-	log.Print("Started!")
+	// разбор параметров
 	flag.Parse()
+	// логирование
+	glog.Info("Started!")
+	defer glog.Info("Stopped!")
 	// Inherit a net.Listener from our parent process or listen anew.
+	addr := "127.0.0.1:" + strconv.Itoa(HEALTH_CHECK_PORT)
 	l, err := goagain.Listener()
 	if err != nil {
-		// Listen on a TCP or a UNIX domain socket (TCP here).
-		l, err = net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(HEALTH_CHECK_PORT))
+		glog.Infof("GoAgain prevous not found ( %s )", err.Error())
+		l, err = net.Listen("tcp", addr)
 		if nil != err {
-			log.Fatalln(err)
+			glog.Fatalf("Listen %s failed: %s", addr, err.Error())
 		}
-		log.Println("listening on", l.Addr())
-		// Accept connections in a new goroutine.
-		go GoTorrents()
-		go GoHealthChecks(l)
+		glog.Infof("GoAgain listening on %s", addr)
 	} else {
 		// Resume accepting connections in a new goroutine.
-		log.Println("resuming listening on", l.Addr())
-		go GoTorrents()
-		go GoHealthChecks(l)
+		glog.Infof("GoAgain try resuming listening on %s", l.Addr())
 		// Kill the parent, now that the child has started successfully.
 		if err := goagain.Kill(); err != nil {
-			log.Fatalln(err)
+			glog.Fatalf("GoAgain can't kill prevous: %s", err.Error())
+
 		}
 	}
+
+	// Запуск фоновых процессов
+	stopAll := DoAll(l)
+
 	// Block the main goroutine awaiting signals.
 	if _, err := goagain.Wait(l); err != nil {
-		log.Fatalln(err)
+		glog.Warningf("GoAgain killed by next: %s", err.Error())
 	}
-	// Do whatever's necessary to ensure a graceful exit like waiting for
-	// goroutines to terminate or a channel to become closed.
+
+	// To ensure a graceful exit waiting for goroutines ends.
+	stopAll()
+
+	// GoAgain
 	if err := l.Close(); nil != err {
-		log.Fatalln(err)
-	}
-	// Разрегистрация в consul
-	if cc != nil {
-		cc.DeRegister()
-	}
-	// Остановка обработки торрентов
-	goTorrentsAgain = false
-
-	/*i := 3 // Ждем 3 секунды
-	for tc != nil && !tc.torrentClient.WaitAll() && i > 0 {
-		time.Sleep(time.Second * 1)
-		i--
-	}*/
-}
-
-// Health-check goroutine
-func GoHealthChecks(l net.Listener) {
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			if goagain.IsErrClosing(err) {
-				break
-			}
-			log.Fatalln(err)
-		}
-		if tc != nil {
-			tc.torrentClient.WriteStatus(c)
-		} else {
-			c.Write([]byte("nil")) // nolint: errcheck
-		}
-		c.Close() // nolint: errcheck
+		glog.Errorf("Closing listener err: %s", addr)
 	}
 }
