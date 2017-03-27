@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -21,18 +22,27 @@ var (
 	ServiceID string
 )
 
-func DoAll(l net.Listener) context.CancelFunc {
+func DoAll(l net.Listener) func() {
 	var (
-		workContext, workCancel = context.WithCancel(context.Background())
+		waitCounter               sync.WaitGroup
+		work1Context, work1Cancel = context.WithCancel(context.Background())
+		work2Context, work2Cancel = context.WithCancel(context.Background())
 	)
-	go GoTorrents(workContext)
-	go GoHealthChecks(workContext, l)
-	return workCancel
+	go GoTorrents(work1Context, &waitCounter)
+	go GoHealthChecks(work2Context, &waitCounter, l)
+	return func() {
+		work1Cancel()
+		work2Cancel()
+		waitCounter.Wait()
+	}
 }
 
-func GoTorrents(ctx context.Context) {
+func GoTorrents(ctx context.Context, waitCounter *sync.WaitGroup) {
 	// Список файлов в работе
 	var processedFiles = make(map[string]*torrent.Torrent)
+	// Счетчик работы
+	waitCounter.Add(1)
+	defer waitCounter.Done()
 	// Разрегистрация в consul
 	defer func() {
 		if cc != nil {
@@ -118,7 +128,10 @@ func GoTorrents(ctx context.Context) {
 }
 
 // Health-check goroutine
-func GoHealthChecks(ctx context.Context, l net.Listener) {
+func GoHealthChecks(ctx context.Context, waitCounter *sync.WaitGroup, l net.Listener) {
+	// Счетчик работы
+	waitCounter.Add(1)
+	defer waitCounter.Done()
 	// begin Рабочий цикл
 	for {
 		// выход по сигналу контекста

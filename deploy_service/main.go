@@ -52,9 +52,10 @@ func main() {
 		glog.Warningf("GoAgain killed by next: %s", err.Error())
 	}
 
-	// Do whatever's necessary to ensure a graceful exit like waiting for
-	// goroutines to terminate or a channel to become closed.
+	// To ensure a graceful exit waiting for goroutines ends.
 	stopAll()
+
+	// GoAgain
 	if err := l.Close(); nil != err {
 		glog.Errorf("Closing listener err: %s", addr)
 	}
