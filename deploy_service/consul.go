@@ -2,11 +2,11 @@
 package main
 
 import (
-	"log"
 	"math/rand"
 	"net"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/consul/api"
 )
 
@@ -48,7 +48,7 @@ func (cc *ConsulClient) hasClient() bool {
 	if cc.client == nil {
 		client, err := api.NewClient(cc.config)
 		if err != nil {
-			log.Printf("Consul hasClient err: %s!", err.Error())
+			glog.Errorf("Consul hasClient err: %s", err.Error())
 			return false
 		}
 		cc.client = client
@@ -62,13 +62,13 @@ func (cc *ConsulClient) hasAgent() bool {
 	}
 	agent := cc.client.Agent()
 	if agent == nil {
-		log.Print("Consul has't Agent!")
+		glog.Error("Consul has't Agent!")
 		cc.needReconnect()
 		return false
 	}
 	info, err := agent.Self()
 	if err != nil {
-		log.Printf("Consul Agent.Self err: %s!", err.Error())
+		glog.Errorf("Consul Agent.Self err: %s!", err.Error())
 		cc.needReconnect()
 		return false
 	}
@@ -84,7 +84,7 @@ func (cc *ConsulClient) hasKV() bool {
 	KV := cc.client.KV()
 	if KV == nil {
 		cc.client = nil
-		log.Print("Consul has't KV!")
+		glog.Error("Consul has't KV!")
 		return false
 	}
 	return true
@@ -97,7 +97,7 @@ func (cc *ConsulClient) hasCatalog() bool {
 	catalog := cc.client.Catalog()
 	if catalog == nil {
 		cc.needReconnect()
-		log.Print("Consul has't Catalog!")
+		glog.Error("Consul has't Catalog!")
 		return false
 	}
 	return true
@@ -114,7 +114,7 @@ func (cc *ConsulClient) GetAnnoncedFiles() map[string][]byte {
 	pairs, _, err := cc.client.KV().List(LIST_PREFIX, cc.qOpt)
 	if err != nil {
 		cc.needReconnect()
-		log.Printf("Get KV from consul err: %s!", err.Error())
+		glog.Errorf("Get KV from consul err: %s!", err.Error())
 		return nil
 	}
 	list := make(map[string][]byte, len(pairs))
@@ -136,7 +136,7 @@ func (cc *ConsulClient) AddAnnoncedFile(key string, val *[]byte) bool {
 	_, _, err := cc.client.KV().CAS(pair, cc.wOpt)
 	if err != nil {
 		cc.needReconnect()
-		log.Printf("Add KV to consul err: %s!", err.Error())
+		glog.Errorf("Add KV to consul err: %s!", err.Error())
 		return false
 	}
 	return true
@@ -149,7 +149,7 @@ func (cc *ConsulClient) GetPeers() []net.IP {
 	services, _, err := cc.client.Catalog().Service(SERVICE_NAME, "", cc.qOpt)
 	if err != nil {
 		cc.needReconnect()
-		log.Printf("Get Services from consul err: %s!", err.Error())
+		glog.Errorf("Get Services from consul err: %s!", err.Error())
 		return nil
 	}
 	// не нужно связываться со ВСЕМИ узлами, достаточно нескольких
@@ -207,10 +207,10 @@ func (cc *ConsulClient) registerService() bool {
 	_, err := cc.client.Catalog().Register(reg, nil)
 	if err != nil {
 		cc.needReconnect()
-		log.Printf("Register service err: %s!", err.Error())
+		glog.Errorf("Register service err: %s!", err.Error())
 		return false
 	} else {
-		log.Printf("Register service OK: %#v", *reg)
+		glog.Infof("Register service OK: %#v", *reg)
 	}
 	return true
 }
@@ -231,10 +231,10 @@ func (cc *ConsulClient) registerHealthCheck() bool {
 	err := cc.client.Agent().CheckRegister(&check)
 	if err != nil {
 		cc.needReconnect()
-		log.Printf("Register healthcheck err: %s!", err.Error())
+		glog.Errorf("Register healthcheck err: %s!", err.Error())
 		return false
 	} else {
-		log.Printf("Register healthcheck OK: %v", check)
+		glog.Infof("Register healthcheck OK: %v", check)
 	}
 	return true
 }
@@ -250,7 +250,7 @@ func (cc *ConsulClient) DeRegister() bool {
 	_, err := cc.client.Catalog().Deregister(dereg, cc.wOpt)
 	if err != nil {
 		cc.needReconnect()
-		log.Printf("DeRegister service err: %s", err.Error())
+		glog.Errorf("DeRegister service err: %s", err.Error())
 		return false
 	}
 	return true

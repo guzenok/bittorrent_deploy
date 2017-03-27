@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"time"
+
+	"github.com/golang/glog"
 
 	"github.com/anacrolix/torrent"
 	"github.com/rcrowley/goagain"
@@ -57,7 +58,7 @@ func GoTorrents(ctx context.Context) {
 			}
 			defer tc.Close()
 			ServiceID = hex.EncodeToString([]byte(tc.torrentClient.PeerID()))
-			log.Printf("PeerID: %s\n", ServiceID)
+			glog.Infof("PeerID: %s\n", ServiceID)
 		}
 
 		// Можно начинать работу с consul ?
@@ -72,7 +73,7 @@ func GoTorrents(ctx context.Context) {
 		// Обрабатываем имеющиеся локально файлы
 		files, err := ioutil.ReadDir(*DIR_STORE)
 		if err != nil {
-			log.Printf("Read local dir \"%s\" err: %s", *DIR_STORE, err.Error())
+			glog.Errorf("Read local dir \"%s\" err: %s", *DIR_STORE, err.Error())
 			continue
 		} else {
 			for _, f := range files {
@@ -132,7 +133,7 @@ func GoHealthChecks(ctx context.Context, l net.Listener) {
 			if goagain.IsErrClosing(err) {
 				return
 			}
-			log.Fatalln(err)
+			glog.Fatalf("Accept err: %s", err.Error())
 		}
 		fmt.Fprintln(c, "HTTP/1.1 200 OK")
 		fmt.Fprintln(c, "Content-Type: text/plain")

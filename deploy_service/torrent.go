@@ -2,7 +2,6 @@
 package main
 
 import (
-	"log"
 	"net"
 	"path"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/bencode"
 	"github.com/anacrolix/torrent/metainfo"
+	"github.com/golang/glog"
 )
 
 const (
@@ -37,11 +37,11 @@ func NewTorrentClient() *TorrentClient {
 			NoDefaultBootstrap: true,
 		},
 		DisableTrackers: true,
-		Debug:           true,
+		Debug:           false,
 	}
 	tc.torrentClient, err = torrent.NewClient(tc.config)
 	if err != nil {
-		log.Printf("Create torrent-client err: %s", err.Error())
+		glog.Errorf("Create torrent-client err: %s", err.Error())
 		return nil
 	}
 	return tc
@@ -66,19 +66,19 @@ func (tc *TorrentClient) SetPeers(peers []net.IP) {
 
 func (tc *TorrentClient) StartDownloadFile(fileName string, annonce []byte) (t *torrent.Torrent) {
 	if len(tc.Peers) < 1 {
-		log.Print("No peers !")
+		glog.Warning("No peers !")
 		return
 	}
 	var mi metainfo.MetaInfo
 	err := bencode.Unmarshal(annonce, &mi)
 	if err != nil {
-		log.Printf("Deserialize metainfo for \"%s\" err: %s", fileName, err.Error())
+		glog.Errorf("Deserialize metainfo for \"%s\" err: %s", fileName, err.Error())
 		return
 	}
 	t = setTorrent(&mi, "leeching", fileName)
 	// Ставим на закачку
 	if t != nil {
-		log.Printf(" from peers: %v", tc.Peers)
+		glog.Infof(" from peers: %v", tc.Peers)
 		t.AddPeers(tc.Peers)
 		<-t.GotInfo()
 		t.DownloadAll()
@@ -87,17 +87,17 @@ func (tc *TorrentClient) StartDownloadFile(fileName string, annonce []byte) (t *
 }
 
 func (tc *TorrentClient) Share(fileName string) (t *torrent.Torrent, annonce *[]byte) {
-	log.Printf("Try share file \"%s\"", fileName)
+	glog.Infof("Try share file \"%s\"", fileName)
 	mi, err := createMetainfo(fileName)
 	if err != nil {
-		log.Printf("Create metainfo for \"%s\" err: %s", fileName, err.Error())
+		glog.Errorf("Create metainfo for \"%s\" err: %s", fileName, err.Error())
 		return
 	}
 	t = setTorrent(mi, "seeding", fileName)
 	// готовим возвращаемые значения
 	bytes, err := bencode.Marshal(mi)
 	if err != nil {
-		log.Printf("Serialize metainfo for \"%s\" err: %s", fileName, err.Error())
+		glog.Errorf("Serialize metainfo for \"%s\" err: %s", fileName, err.Error())
 	}
 	annonce = &bytes
 	return
@@ -106,13 +106,13 @@ func (tc *TorrentClient) Share(fileName string) (t *torrent.Torrent, annonce *[]
 func setTorrent(mi *metainfo.MetaInfo, act string, fileName string) *torrent.Torrent {
 	newT, isNew, err := tc.torrentClient.AddTorrentSpec(torrent.TorrentSpecFromMetaInfo(mi))
 	if err != nil {
-		log.Printf("Add torrent for \"%s\" err: %s", fileName, err.Error())
+		glog.Errorf("Add torrent for \"%s\" err: %s", fileName, err.Error())
 		return nil
 	}
 	if isNew {
-		log.Printf("Begin %s \"%s\"", act, fileName)
+		glog.Infof("Begin %s \"%s\"", act, fileName)
 	} else {
-		log.Printf("Already %s \"%s\"", act, fileName)
+		glog.Warningf("Already %s \"%s\"", act, fileName)
 	}
 	return newT
 }
