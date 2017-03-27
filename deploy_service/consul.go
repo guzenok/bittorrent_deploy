@@ -3,6 +3,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"net"
 	"strconv"
 
@@ -10,9 +11,13 @@ import (
 )
 
 const (
-	SERVICE_NAME       = "cd"
+	// префикс имени сервиса в consul
+	SERVICE_NAME       = "deploy"
 	SERVICE_NAME_DELIM = "_"
-	LIST_PREFIX        = SERVICE_NAME + ":file:"
+	// префикс для consul KV
+	LIST_PREFIX = SERVICE_NAME + ":file:"
+	// не нужно связываться со ВСЕМИ узлами, достаточно нескольких
+	PEERS_LIMIT = 10
 )
 
 type ConsulClient struct {
@@ -147,21 +152,35 @@ func (cc *ConsulClient) GetPeers() []net.IP {
 		log.Printf("Get Services from consul err: %s!", err.Error())
 		return nil
 	}
-	list := make([]net.IP, len(services))
+	// не нужно связываться со ВСЕМИ узлами, достаточно нескольких
+	peersLen := len(services)
+	if peersLen < 1 {
+		return nil
+	}
+	if peersLen > PEERS_LIMIT {
+		peersLen = PEERS_LIMIT
+	}
+	list := make([]net.IP, peersLen)
 	i := 0
 	registered := false
 	for _, serv := range services {
-		if serv.Address != cc.AdvertiseAddr {
-			list[i] = net.ParseIP(serv.Address)
-			i++
-		} else {
+		// самого себя не считаем
+		if serv.Address == cc.AdvertiseAddr {
 			registered = true
+			continue
 		}
+		// поначалу всех берем, а когда уже набрали - кидаем монетку
+		if i < peersLen {
+			list[i] = net.ParseIP(serv.Address)
+		} else if rand.Intn(100) >= 50 {
+			list[i%peersLen] = net.ParseIP(serv.Address)
+		}
+		i++
 	}
 	if !registered {
 		cc.Register()
 	}
-	return list[:i]
+	return list[:i%peersLen]
 }
 
 func (cc *ConsulClient) Register() bool {
@@ -169,6 +188,9 @@ func (cc *ConsulClient) Register() bool {
 }
 
 func (cc *ConsulClient) registerService() bool {
+	if !cc.hasCatalog() {
+		return false
+	}
 	reg := &api.CatalogRegistration{
 		Node:    cc.NodeName,
 		Address: cc.AdvertiseAddr,

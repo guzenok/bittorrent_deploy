@@ -42,6 +42,7 @@ func GoTorrents() {
 		if tc != nil && cc == nil {
 			// consul-клиент
 			cc = NewConsulClient(ServiceID)
+			cc.Register()
 		}
 
 		// Обрабатываем имеющиеся локально файлы

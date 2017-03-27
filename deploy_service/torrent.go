@@ -65,6 +65,10 @@ func (tc *TorrentClient) SetPeers(peers []net.IP) {
 }
 
 func (tc *TorrentClient) StartDownloadFile(fileName string, annonce []byte) (t *torrent.Torrent) {
+	if len(tc.Peers) < 1 {
+		log.Print("No peers !")
+		return
+	}
 	var mi metainfo.MetaInfo
 	err := bencode.Unmarshal(annonce, &mi)
 	if err != nil {
@@ -74,6 +78,7 @@ func (tc *TorrentClient) StartDownloadFile(fileName string, annonce []byte) (t *
 	t = setTorrent(&mi, "leeching", fileName)
 	// Ставим на закачку
 	if t != nil {
+		log.Printf(" from peers: %v", tc.Peers)
 		t.AddPeers(tc.Peers)
 		<-t.GotInfo()
 		t.DownloadAll()
