@@ -1,6 +1,6 @@
 CONTAINERS_COUNT=004
 
-build: configure test_cluster/ansible.key compile
+build: configure test_cluster/ansible.key
 	sudo chown -R $$USER ./test_cluster/storage/*
 	docker build -t ansible_managed_host -f ./test_cluster/Dockerfile.managed ./test_cluster
 	docker build -t ansible_control_host -f ./test_cluster/Dockerfile.control ./test_cluster
@@ -36,7 +36,7 @@ configure:
 	done
 
 
-up:
+up: compile
 	cd ./test_cluster && docker-compose -p host up -d && cd ..
 	docker exec -ti host_ansible_control_000_1 bash -c "/root/ansible/install.sh"
 	docker exec -ti host_ansible_control_000_1 bash -c "/root/ansible/start.sh"
@@ -45,7 +45,7 @@ down:
 	cd ./test_cluster && docker-compose -p host down && cd ..
 
 
-start:
+start: compile
 	cd ./test_cluster && docker-compose -p host up -d && cd ..
 	docker exec -ti host_ansible_control_000_1 bash -c "/root/ansible/start.sh"
 
