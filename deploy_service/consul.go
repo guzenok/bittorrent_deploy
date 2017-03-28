@@ -184,7 +184,7 @@ func (cc *ConsulClient) GetPeers() []net.IP {
 }
 
 func (cc *ConsulClient) Register() bool {
-	return cc.registerService() // && cc.registerHealthCheck()
+	return cc.registerService() && cc.registerHealthCheck()
 }
 
 func (cc *ConsulClient) registerService() bool {
@@ -216,6 +216,9 @@ func (cc *ConsulClient) registerService() bool {
 }
 
 func (cc *ConsulClient) registerHealthCheck() bool {
+	if !cc.hasAgent() {
+		return false
+	}
 	// Health check
 	check := api.AgentCheckRegistration{
 		ID:        "main",

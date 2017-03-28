@@ -1,6 +1,5 @@
 #!/bin/bash
 
-PID_FILE=/var/lock/deploy_service.pid
 LOG_FILE={{deploy.directories.log_dir}}/deploy_service.log
 
 start() {
@@ -19,15 +18,15 @@ export GOMAXPROCS=`nproc`
 
 case "$1" in
     "start")
+        rm $LOG_FILE
         start
         ;;
     "stop")
         stop
         ;;
     "restart")
-        stop
         rm $LOG_FILE
-        start
+        kill -12 `pgrep deploy_service`
         ;;
     *)
         echo "Usage: $0 start|stop|restart"
