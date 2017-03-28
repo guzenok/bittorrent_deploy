@@ -17,9 +17,7 @@ import (
 )
 
 var (
-	tc        *TorrentClient
-	cc        *ConsulClient
-	ServiceID string
+	tc *TorrentClient
 )
 
 func DoAll(l net.Listener) func() {
@@ -38,26 +36,43 @@ func DoAll(l net.Listener) func() {
 }
 
 func GoTorrents(ctx context.Context, waitCounter *sync.WaitGroup) {
-	// Список файлов в работе
-	var processedFiles = make(map[string]*torrent.Torrent)
+	var (
+		cc             *ConsulClient
+		ServiceID      string
+		processedFiles = make(map[string]*torrent.Torrent) // Список файлов в работе
+	)
+
 	// Счетчик работы
 	waitCounter.Add(1)
 	defer waitCounter.Done()
-	// Разрегистрация в consul
+
+	// Разрегистрация в consul по окончанию
 	defer func() {
+		if tc != nil {
+			tc.Close()
+		}
 		if cc != nil {
 			cc.DeRegister()
 		}
 	}()
-	// begin Рабочий цикл
-	for {
-		// выход по сигналу контекста
+
+	// проверка отмены контекста
+	isBreak := func() bool {
 		select {
 		case <-ctx.Done():
-			return
+			return true
 		default:
-			time.Sleep(time.Second * 2) // освобождение cpu
+			return false
 		}
+	}
+
+	// begin Рабочий цикл
+	for {
+		if isBreak() {
+			return
+		}
+		// освобождение cpu
+		time.Sleep(time.Second * 2)
 
 		// Нужно ли подключиться к torrent?
 		if tc == nil {
@@ -66,7 +81,6 @@ func GoTorrents(ctx context.Context, waitCounter *sync.WaitGroup) {
 			if tc == nil {
 				continue
 			}
-			defer tc.Close()
 			ServiceID = hex.EncodeToString([]byte(tc.torrentClient.PeerID()))
 			glog.Infof("PeerID: %s\n", ServiceID)
 		}
@@ -80,6 +94,9 @@ func GoTorrents(ctx context.Context, waitCounter *sync.WaitGroup) {
 			}
 		}
 
+		if isBreak() {
+			return
+		}
 		// Обрабатываем имеющиеся локально файлы
 		files, err := ioutil.ReadDir(*DIR_STORE)
 		if err != nil {
@@ -103,10 +120,16 @@ func GoTorrents(ctx context.Context, waitCounter *sync.WaitGroup) {
 			}
 		}
 
+		if isBreak() {
+			return
+		}
 		// Получаем адреса других пиров
 		peers := cc.GetPeers()
 		tc.SetPeers(peers)
 
+		if isBreak() {
+			return
+		}
 		// Читаем все анонсы из consul
 		annoncedFiles := cc.GetAnnoncedFiles()
 		if annoncedFiles == nil {
@@ -144,19 +167,20 @@ func GoHealthChecks(ctx context.Context, waitCounter *sync.WaitGroup, l net.List
 		c, err := l.Accept()
 		if err != nil {
 			if goagain.IsErrClosing(err) {
-				return
+				break
 			}
 			glog.Fatalf("Accept err: %s", err.Error())
 		}
 		fmt.Fprintln(c, "HTTP/1.1 200 OK")
 		fmt.Fprintln(c, "Content-Type: text/plain")
 		fmt.Fprintln(c, "")
+		fmt.Fprintln(c, "<html><body><pre>")
 		if tc != nil {
 			tc.torrentClient.WriteStatus(c)
 		} else {
-			c.Write([]byte("nil")) // nolint: errcheck
+			fmt.Fprintln(c, "nil")
 		}
-		fmt.Fprintln(c, "")
+		fmt.Fprintln(c, "</pre></body></html>")
 		c.Close() // nolint: errcheck
 	}
 	// end Рабочий цикл

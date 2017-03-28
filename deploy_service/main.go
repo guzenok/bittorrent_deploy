@@ -28,19 +28,18 @@ func main() {
 	addr := "127.0.0.1:" + strconv.Itoa(HEALTH_CHECK_PORT)
 	l, err := goagain.Listener()
 	if err != nil {
-		glog.Infof("GoAgain prevous not found ( %s )", err.Error())
+		glog.Info("Pure start (not restart)")
 		l, err = net.Listen("tcp", addr)
 		if nil != err {
 			glog.Fatalf("Listen %s failed: %s", addr, err.Error())
 		}
-		glog.Infof("GoAgain listening on %s", addr)
+		glog.Infof("Listen on %s", addr)
 	} else {
 		// Resume accepting connections in a new goroutine.
 		glog.Infof("GoAgain try resuming listening on %s", l.Addr())
 		// Kill the parent, now that the child has started successfully.
 		if err := goagain.Kill(); err != nil {
 			glog.Fatalf("GoAgain can't kill prevous: %s", err.Error())
-
 		}
 	}
 
@@ -55,8 +54,9 @@ func main() {
 	// To ensure a graceful exit waiting for goroutines ends.
 	stopAll()
 
-	// GoAgain
+	// GoAgain closing
 	if err := l.Close(); nil != err {
 		glog.Errorf("Closing listener err: %s", addr)
 	}
+
 }

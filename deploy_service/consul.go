@@ -180,7 +180,7 @@ func (cc *ConsulClient) GetPeers() []net.IP {
 	if !registered {
 		cc.Register()
 	}
-	return list[:i%peersLen]
+	return list[:peersLen]
 }
 
 func (cc *ConsulClient) Register() bool {
@@ -188,70 +188,44 @@ func (cc *ConsulClient) Register() bool {
 }
 
 func (cc *ConsulClient) registerService() bool {
-	if !cc.hasCatalog() {
+	if !cc.hasAgent() {
 		return false
 	}
-	reg := &api.CatalogRegistration{
-		Node:    cc.NodeName,
-		Address: cc.AdvertiseAddr,
-		Service: cc.service,
-		/* Check: &api.AgentCheck{
-			Node:      cc.NodeName,
-			CheckID:   "main",
-			Name:      "Deploy health check",
-			Notes:     "torrent client status",
-			ServiceID: cc.service.ID,
-		}, */
+	reg := &api.AgentServiceRegistration{
+		ID:   cc.service.ID,
+		Name: cc.service.Service,
+		Port: cc.service.Port,
+		Check: &api.AgentServiceCheck{
+			TCP:      "127.0.0.1:" + strconv.Itoa(HEALTH_CHECK_PORT),
+			Interval: "30s",
+			Timeout:  "10s",
+			Notes:    "torrent client status",
+			DeregisterCriticalServiceAfter: "60s",
+		},
 	}
 	// Service
-	_, err := cc.client.Catalog().Register(reg, nil)
+	err := cc.client.Agent().ServiceRegister(reg)
 	if err != nil {
 		cc.needReconnect()
 		glog.Errorf("Register service err: %s!", err.Error())
 		return false
 	} else {
-		glog.Infof("Register service OK: %#v", *reg)
-	}
-	return true
-}
-
-func (cc *ConsulClient) registerHealthCheck() bool {
-	// Health check
-	check := api.AgentCheckRegistration{
-		ID:        "main",
-		Name:      "Deploy health check",
-		Notes:     "torrent client status",
-		ServiceID: cc.service.ID,
-		AgentServiceCheck: api.AgentServiceCheck{
-			HTTP:     "http://127.0.0.1:" + strconv.Itoa(HEALTH_CHECK_PORT),
-			Interval: "30s",
-			Timeout:  "10s",
-		},
-	}
-	err := cc.client.Agent().CheckRegister(&check)
-	if err != nil {
-		cc.needReconnect()
-		glog.Errorf("Register healthcheck err: %s!", err.Error())
-		return false
-	} else {
-		glog.Infof("Register healthcheck OK: %v", check)
+		glog.Infof("Register service OK: %#v, %#v", *reg, *reg.Check)
 	}
 	return true
 }
 
 func (cc *ConsulClient) DeRegister() bool {
-	if !cc.hasCatalog() {
+	if cc.client == nil || cc.client.Agent() == nil {
 		return false
 	}
-	dereg := &api.CatalogDeregistration{
-		Node:      cc.NodeName,
-		ServiceID: cc.service.ID,
-	}
-	_, err := cc.client.Catalog().Deregister(dereg, cc.wOpt)
+	err := cc.client.Agent().ServiceDeregister(cc.service.ID)
 	if err != nil {
 		cc.needReconnect()
 		glog.Errorf("DeRegister service err: %s", err.Error())
 		return false
+	} else {
+		glog.Info("DeRegister service OK")
 	}
 	return true
 }
