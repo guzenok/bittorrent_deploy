@@ -6,7 +6,7 @@ start() {
   nohup /usr/local/bin/deploy_service \
     -logtostderr=true \
     -data={{deploy.directories.data_dir}} \
-    >> $LOG_FILE 2>&1 &
+    > $LOG_FILE 2>&1 &
 }
 
 stop() {
@@ -18,14 +18,12 @@ export GOMAXPROCS=`nproc`
 
 case "$1" in
     "start")
-        rm $LOG_FILE
         start
         ;;
     "stop")
         stop
         ;;
     "restart")
-        rm $LOG_FILE
         kill -12 `pgrep deploy_service`
         ;;
     *)

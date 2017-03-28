@@ -180,7 +180,7 @@ func (cc *ConsulClient) GetPeers() []net.IP {
 	if !registered {
 		cc.Register()
 	}
-	return list[:i%peersLen]
+	return list[:peersLen]
 }
 
 func (cc *ConsulClient) Register() bool {
@@ -195,13 +195,13 @@ func (cc *ConsulClient) registerService() bool {
 		Node:    cc.NodeName,
 		Address: cc.AdvertiseAddr,
 		Service: cc.service,
-		/* Check: &api.AgentCheck{
+		Check: &api.AgentCheck{
 			Node:      cc.NodeName,
-			CheckID:   "main",
+			CheckID:   SERVICE_NAME + SERVICE_NAME_DELIM + "check",
 			Name:      "Deploy health check",
 			Notes:     "torrent client status",
 			ServiceID: cc.service.ID,
-		}, */
+		},
 	}
 	// Service
 	_, err := cc.client.Catalog().Register(reg, nil)
@@ -210,7 +210,7 @@ func (cc *ConsulClient) registerService() bool {
 		glog.Errorf("Register service err: %s!", err.Error())
 		return false
 	} else {
-		glog.Infof("Register service OK: %#v", *reg)
+		glog.Infof("Register service OK: %#v, %#v, %#v", *reg, *reg.Check, cc.service)
 	}
 	return true
 }
@@ -221,7 +221,7 @@ func (cc *ConsulClient) registerHealthCheck() bool {
 	}
 	// Health check
 	check := api.AgentCheckRegistration{
-		ID:        "main",
+		// ID:        SERVICE_NAME + SERVICE_NAME_DELIM + "check",
 		Name:      "Deploy health check",
 		Notes:     "torrent client status",
 		ServiceID: cc.service.ID,
@@ -243,7 +243,7 @@ func (cc *ConsulClient) registerHealthCheck() bool {
 }
 
 func (cc *ConsulClient) DeRegister() bool {
-	if !cc.hasCatalog() {
+	if cc.client == nil || cc.client.Catalog() == nil {
 		return false
 	}
 	dereg := &api.CatalogDeregistration{
@@ -255,6 +255,8 @@ func (cc *ConsulClient) DeRegister() bool {
 		cc.needReconnect()
 		glog.Errorf("DeRegister service err: %s", err.Error())
 		return false
+	} else {
+		glog.Infof("DeRegister service OK: %v", *dereg)
 	}
 	return true
 }
