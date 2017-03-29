@@ -124,7 +124,8 @@ func GoTorrents(ctx context.Context, waitCounter *sync.WaitGroup) {
 			return
 		}
 		// Получаем адреса других пиров
-		peers := cc.GetPeers()
+		peers := cc.GetAllPeers()
+		//peers := cc.GetSomePeers()
 		tc.SetPeers(peers)
 
 		if isBreak() {

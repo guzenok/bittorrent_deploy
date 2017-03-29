@@ -142,7 +142,39 @@ func (cc *ConsulClient) AddAnnoncedFile(key string, val *[]byte) bool {
 	return true
 }
 
-func (cc *ConsulClient) GetPeers() []net.IP {
+func (cc *ConsulClient) GetAllPeers() []net.IP {
+	if !cc.hasCatalog() {
+		return nil
+	}
+	services, _, err := cc.client.Catalog().Service(SERVICE_NAME, "", cc.qOpt)
+	if err != nil {
+		cc.needReconnect()
+		glog.Errorf("Get Services from consul err: %s!", err.Error())
+		return nil
+	}
+	peersLen := len(services)
+	if peersLen < 1 {
+		return nil
+	}
+	list := make([]net.IP, peersLen)
+	i := 0
+	registered := false
+	for _, serv := range services {
+		// самого себя не считаем
+		if serv.Address == cc.AdvertiseAddr {
+			registered = true
+			continue
+		}
+		list[i] = net.ParseIP(serv.Address)
+		i++
+	}
+	if !registered {
+		cc.Register()
+	}
+	return list[:i]
+}
+
+func (cc *ConsulClient) GetSomePeers() []net.IP {
 	if !cc.hasCatalog() {
 		return nil
 	}
