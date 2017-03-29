@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Сколько контейнеров-хостов создать (3 цифры, ведущие нули)
-CONTAINERS_COUNT=099
+CONTAINERS_COUNT=009
 
 
 # Генерация конфигов и директорий
-make CONTAINERS_COUNT=${CONTAINERS_COUNT} build
+make clean
+make CONTAINERS_COUNT=${CONTAINERS_COUNT} build_containers
 
 
 # Генерация тестового файла для раздачи
@@ -16,8 +17,11 @@ FILE_NAME=`basename ${FILE_NAME}`
 
 
 # Запуск контейнеров
-make up
+cd test_containers
+docker-compose -p host up -d
+cd ..
 
+echo TIME FILES_COUNT
 echo `date '+%H:%M:%S'` 0
 while true
 do
@@ -29,4 +33,6 @@ do
     fi
 done
 
-make clean
+cd test_containers
+docker-compose -p host down
+cd ..

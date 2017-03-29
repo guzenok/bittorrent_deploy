@@ -1,0 +1,35 @@
+#!/bin/bash
+
+LOG_FILE=/var/log/deploy_service.log
+
+start() {
+  nohup /usr/local/bin/deploy_service \
+    -logtostderr=true \
+    -data=/var/deploy \
+    > $LOG_FILE 2>&1 &
+}
+
+stop() {
+    kill `pgrep deploy_service` 2>/dev/null
+}
+
+# Make sure to use all our CPUs, because Consul can block a scheduler thread
+export GOMAXPROCS=`nproc`
+
+case "$1" in
+    "start")
+        start
+        ;;
+    "stop")
+        stop
+        ;;
+    "restart")
+        kill -12 `pgrep deploy_service`
+        ;;
+    *)
+        echo "Usage: $0 start|stop|restart"
+        exit 1
+        ;;
+esac
+
+

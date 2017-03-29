@@ -1,9 +1,18 @@
 CONTAINERS_COUNT=004
+CONSUL_VERSION=0.7.5
 
 build: configure test_cluster/ansible.key
-	sudo chown -R $$USER ./test_cluster/storage/*
 	docker build -t ansible_managed_host -f ./test_cluster/Dockerfile.managed ./test_cluster
 	docker build -t ansible_control_host -f ./test_cluster/Dockerfile.control ./test_cluster
+
+
+build_containers: build
+	cd test_containers/bin && CGO_ENABLED=0 go build -a -ldflags '-s' -installsuffix cgo ../../deploy_service/ && cd ../..
+	cd test_containers/bin && wget https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip -O consul.zip && unzip consul.zip && cd ../..
+	cp test_cluster/ansible/ansible.cfg test_cluster/ansible/inventory.txt test_containers/ansible/
+	sed -e 's/ansible_/deploy_/g' -e 's/\.\/storage/\.\.\/test_cluster\/storage/g' -e '/\.\/bin/d' test_cluster/docker-compose.yml > test_containers/docker-compose.yml
+	docker build -t deploy_managed_host -f ./test_containers/Dockerfile.managed ./test_containers
+	docker build -t deploy_control_host -f ./test_containers/Dockerfile.control ./test_containers
 
 
 compile: lint
@@ -21,6 +30,8 @@ test_cluster/ansible.key:
 configure:
 	cp test_cluster/ansible/inventory.txt.header		   test_cluster/ansible/inventory.txt;\
 	cp test_cluster/docker-compose.yml.header		   test_cluster/docker-compose.yml;\
+	find test_cluster/storage -mindepth 1 -type d -exec rm -fr {} \;
+	mkdir -p test_cluster/storage/host_000;\
 	for i in `seq -w 001 ${CONTAINERS_COUNT}` ;\
 	do \
 	  echo ansible_managed_$$i >> test_cluster/ansible/inventory.txt;\
