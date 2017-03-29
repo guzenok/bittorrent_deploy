@@ -26,10 +26,12 @@ echo `date '+%H:%M:%S'` 0
 while true
 do
     CNT=`find ./test_cluster/storage/ -name "${FILE_NAME}" | wc -l`
+    echo `date '+%H:%M:%S'` ${CNT}
     if [ ${CNT} -ge ${CONTAINERS_COUNT} ]
     then
-      echo `date '+%H:%M:%S'` ${CNT}
       break
+    else
+      sleep 1
     fi
 done
 
