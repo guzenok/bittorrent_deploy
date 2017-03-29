@@ -1,0 +1,19 @@
+FROM ansible_managed_host
+
+RUN mkdir -p /var/lib/consul \
+    && mkdir -p /etc/consul.d \
+    && mkdir -p /var/log
+
+COPY bin/consul /usr/bin/
+COPY consul.run /bin/
+COPY consul_control.config.json /etc/consul.d/config.json
+COPY consul_control.default /etc/default/consul
+
+COPY bin/deploy_service /usr/local/bin/
+COPY deploy_srv.run /bin/
+
+COPY entrypoint.sh /bin/
+ENTRYPOINT [ "/bin/entrypoint.sh" ]
+
+
+EXPOSE 22
