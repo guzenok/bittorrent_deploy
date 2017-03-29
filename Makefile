@@ -30,7 +30,7 @@ test_cluster/ansible.key:
 configure:
 	cp test_cluster/ansible/inventory.txt.header		   test_cluster/ansible/inventory.txt;\
 	cp test_cluster/docker-compose.yml.header		   test_cluster/docker-compose.yml;\
-	find test_cluster/storage -mindepth 1 -type d -exec rm -fr {} \;
+	find test_cluster/storage/ -mindepth 1 -type d -exec rm -fr "{}" \; 2>/dev/null ;\
 	mkdir -p test_cluster/storage/host_000;\
 	for i in `seq -w 001 ${CONTAINERS_COUNT}` ;\
 	do \
